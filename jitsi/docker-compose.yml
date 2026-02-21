@@ -1,0 +1,182 @@
+services:
+  # ── Frontend (Nginx + Jitsi Web) ──
+  web:
+    image: jitsi/web:${JITSI_IMAGE_VERSION:-stable}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - '127.0.0.1:${HTTP_PORT:-8000}:80'
+    volumes:
+      - ${CONFIG}/web:/config:Z
+      - ${CONFIG}/web/crontabs:/var/spool/cron/crontabs:Z
+      - ${CONFIG}/transcripts:/usr/share/jitsi-meet/transcripts:Z
+    environment:
+      - DISABLE_HTTPS
+      - ENABLE_COLIBRI_WEBSOCKET
+      - ENABLE_HTTP_REDIRECT
+      - ENABLE_XMPP_WEBSOCKET
+      - ENABLE_LETSENCRYPT
+      - ENABLE_HSTS
+      - ENABLE_IPV6
+      - ENABLE_PREJOIN_PAGE
+      - ENABLE_WELCOME_PAGE
+      - ENABLE_CLOSE_PAGE
+      - ENABLE_RECORDING
+      - ENABLE_LIVESTREAMING
+      - ENABLE_AUTH
+      - ENABLE_GUESTS
+      - ENABLE_TRANSCRIPTIONS
+      - ENABLE_BREAKOUT_ROOMS
+      - LETSENCRYPT_DOMAIN
+      - LETSENCRYPT_EMAIL
+      - LETSENCRYPT_USE_STAGING
+      - PUBLIC_URL
+      - TZ
+      - XMPP_AUTH_DOMAIN
+      - XMPP_BOSH_URL_BASE
+      - XMPP_DOMAIN
+      - XMPP_GUEST_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_RECORDER_DOMAIN
+      - ETHERPAD_PUBLIC_URL
+      - ETHERPAD_URL_BASE
+    networks:
+      meet.jitsi:
+    depends_on:
+      - jvb
+
+  # ── XMPP Server ──
+  prosody:
+    image: jitsi/prosody:${JITSI_IMAGE_VERSION:-stable}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    expose:
+      - '5222'
+      - '5269'
+      - '5347'
+      - '5280'
+    volumes:
+      - ${CONFIG}/prosody/config:/config:Z
+      - ${CONFIG}/prosody/prosody-plugins-custom:/prosody-plugins-custom:Z
+    environment:
+      - AUTH_TYPE
+      - ENABLE_AUTH
+      - ENABLE_AV_MODERATION
+      - ENABLE_BREAKOUT_ROOMS
+      - ENABLE_END_CONFERENCE
+      - ENABLE_GUESTS
+      - ENABLE_IPV6
+      - ENABLE_LOBBY
+      - ENABLE_RECORDING
+      - ENABLE_XMPP_WEBSOCKET
+      - GLOBAL_CONFIG
+      - GLOBAL_MODULES
+      - JIBRI_RECORDER_PASSWORD
+      - JIBRI_XMPP_PASSWORD
+      - JICOFO_AUTH_PASSWORD
+      - JICOFO_COMPONENT_SECRET
+      - JIGASI_XMPP_PASSWORD
+      - JIGASI_TRANSCRIBER_PASSWORD
+      - JVB_AUTH_USER
+      - JVB_AUTH_PASSWORD
+      - LOG_LEVEL
+      - PUBLIC_URL
+      - TURN_CREDENTIALS
+      - TURN_HOST
+      - TURNS_HOST
+      - TURN_PORT
+      - TURNS_PORT
+      - TZ
+      - XMPP_DOMAIN
+      - XMPP_AUTH_DOMAIN
+      - XMPP_GUEST_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_MODULES
+      - XMPP_MUC_MODULES
+      - XMPP_INTERNAL_MUC_MODULES
+      - XMPP_RECORDER_DOMAIN
+      - XMPP_PORT
+    networks:
+      meet.jitsi:
+        aliases:
+          - ${XMPP_SERVER:-xmpp.meet.jitsi}
+
+  # ── Focus Component ──
+  jicofo:
+    image: jitsi/jicofo:${JITSI_IMAGE_VERSION:-stable}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - '127.0.0.1:${JICOFO_REST_PORT:-8888}:8888'
+    volumes:
+      - ${CONFIG}/jicofo:/config:Z
+    environment:
+      - AUTH_TYPE
+      - ENABLE_AUTH
+      - ENABLE_AUTO_OWNER
+      - ENABLE_CODEC_VP8
+      - ENABLE_CODEC_VP9
+      - ENABLE_CODEC_H264
+      - ENABLE_RECORDING
+      - ENABLE_SCTP
+      - ENABLE_TRANSCRIPTIONS
+      - JICOFO_AUTH_PASSWORD
+      - JICOFO_ENABLE_BRIDGE_HEALTH_CHECKS
+      - JICOFO_CONF_INITIAL_PARTICIPANT_WAIT_TIMEOUT
+      - JICOFO_CONF_SINGLE_PARTICIPANT_TIMEOUT
+      - JICOFO_ENABLE_HEALTH_CHECKS
+      - JICOFO_MAX_MEMORY
+      - JIBRI_BREWERY_MUC
+      - JIGASI_BREWERY_MUC
+      - JIGASI_SIP_URI
+      - JVB_BREWERY_MUC
+      - MAX_BRIDGE_PARTICIPANTS
+      - TZ
+      - XMPP_DOMAIN
+      - XMPP_AUTH_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_RECORDER_DOMAIN
+      - XMPP_SERVER
+      - XMPP_PORT
+    depends_on:
+      - prosody
+    networks:
+      meet.jitsi:
+
+  # ── Video Bridge ──
+  jvb:
+    image: jitsi/jvb:${JITSI_IMAGE_VERSION:-stable}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - '${JVB_PORT:-10000}:${JVB_PORT:-10000}/udp'
+      - '127.0.0.1:${JVB_COLIBRI_PORT:-8080}:8080'
+    volumes:
+      - ${CONFIG}/jvb:/config:Z
+    environment:
+      - DOCKER_HOST_ADDRESS
+      - ENABLE_COLIBRI_WEBSOCKET
+      - ENABLE_OCTO
+      - ENABLE_SCTP
+      - JVB_ADVERTISE_IPS
+      - JVB_ADVERTISE_PRIVATE_CANDIDATES
+      - JVB_AUTH_USER
+      - JVB_AUTH_PASSWORD
+      - JVB_BREWERY_MUC
+      - JVB_DISABLE_STUN
+      - JVB_PORT
+      - JVB_STUN_SERVERS
+      - JVB_WS_DOMAIN
+      - JVB_WS_SERVER_ID
+      - PUBLIC_URL
+      - TZ
+      - VIDEOBRIDGE_MAX_MEMORY
+      - XMPP_AUTH_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_SERVER
+      - XMPP_PORT
+    depends_on:
+      - prosody
+    networks:
+      meet.jitsi:
+
+networks:
+  meet.jitsi:
