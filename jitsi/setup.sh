@@ -135,6 +135,10 @@ if [ "$SUBDOMAIN_MODE" = true ]; then
     # ── Subdomain mode: own server block for meet.DOMAIN ──
     mkdir -p /etc/nginx/survival-pack.d
 
+    # Remove leftover IP-mode snippets to avoid duplicate location conflicts
+    rm -f /etc/nginx/survival-pack.d/jitsi.conf
+    rm -f /etc/nginx/sites-enabled/survival-pack
+
     if [ "$SSL_ENABLED" = true ]; then
         cat > /etc/nginx/sites-available/jitsi <<NGINX
 server {
@@ -234,6 +238,10 @@ NGINX
 else
     # ── IP mode: shared survival-pack server block ──
     mkdir -p /etc/nginx/survival-pack.d
+
+    # Remove leftover subdomain-mode files
+    rm -f /etc/nginx/survival-pack.d/jitsi-locations.conf
+    rm -f /etc/nginx/sites-enabled/jitsi
 
     cat > /etc/nginx/survival-pack.d/jitsi.conf <<'NGINX'
     location /xmpp-websocket {
