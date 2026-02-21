@@ -19,8 +19,8 @@ services:
     restart: ${RESTART_POLICY:-unless-stopped}
     ports:
       - '127.0.0.1:8065:8065'
-      - '${CALLS_PORT:-8443}:8443/udp'
-      - '${CALLS_PORT:-8443}:8443/tcp'
+      - '${CALLS_PORT:-8445}:8445/udp'
+      - '${CALLS_PORT:-8445}:8445/tcp'
     volumes:
       - ${MATTERMOST_CONFIG_PATH:-./volumes/app/mattermost/config}:/mattermost/config:rw
       - ${MATTERMOST_DATA_PATH:-./volumes/app/mattermost/data}:/mattermost/data:rw

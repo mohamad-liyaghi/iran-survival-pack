@@ -18,11 +18,13 @@ make chat
 ## Ports
 
 | Port | Protocol | Service |
-|-------|----------|-----------------|
-| 80 | TCP | HTTP redirect |
-| 443 | TCP | HTTPS |
+|-------|----------|----------------------|
+| 80 | TCP | HTTP (Jitsi redirect) |
+| 443 | TCP | HTTPS (Jitsi) |
+| 8080 | TCP | Mattermost chat |
 | 10000 | UDP | Jitsi media |
-| 8443 | TCP/UDP | Mattermost Calls |
+| 8443 | TCP/UDP | Jitsi TURN/TLS |
+| 8445 | TCP/UDP | Mattermost Calls |
 | 22 | TCP | SSH |
 
 ## Requirements
