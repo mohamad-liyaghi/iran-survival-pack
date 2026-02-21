@@ -1,0 +1,13 @@
+services:
+  filebrowser:
+    image: docker.arvancloud.ir/filebrowser/filebrowser:s6
+    restart: unless-stopped
+    ports:
+      - '${FB_PORT:-8091}:80'
+    volumes:
+      - ./data:/srv
+      - ./db:/database
+      - ./config:/config
+    environment:
+      - PUID=1000
+      - PGID=1000

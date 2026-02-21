@@ -11,8 +11,11 @@ make init
 # 2. Deploy Jitsi Meet video conferencing (on /)
 make jitsi
 
-# 3. Deploy Mattermost team chat (on /chat)
+# 3. Deploy Mattermost team chat (port 8090)
 make chat
+
+# 4. Deploy File Browser - web file manager (port 8091)
+make sftp
 ```
 
 ## Ports
@@ -21,10 +24,10 @@ make chat
 |-------|----------|----------------------|
 | 80 | TCP | HTTP (Jitsi redirect) |
 | 443 | TCP | HTTPS (Jitsi) |
-| 8080 | TCP | Mattermost chat |
+| 8090 | TCP | Mattermost chat |
 | 10000 | UDP | Jitsi media |
-| 8443 | TCP/UDP | Jitsi TURN/TLS |
 | 8445 | TCP/UDP | Mattermost Calls |
+| 8091 | TCP | File Browser |
 | 22 | TCP | SSH |
 
 ## Requirements

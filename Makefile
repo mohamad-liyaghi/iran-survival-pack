@@ -1,4 +1,4 @@
-.PHONY: init jitsi chat
+.PHONY: init jitsi chat sftp
 
 init:
 	@sudo bash init.sh
@@ -8,3 +8,6 @@ jitsi:
 
 chat:
 	@sudo bash mattermost/setup.sh
+
+sftp:
+	@sudo bash sftp/setup.sh

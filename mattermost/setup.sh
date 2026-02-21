@@ -6,7 +6,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 CONFIG_FILE="${PROJECT_DIR}/config.json"
 MM_DIR="$SCRIPT_DIR"
 
-MM_PORT=8080
+MM_PORT=8090
 
 # ── Read config ──
 if [ ! -f "$CONFIG_FILE" ]; then
