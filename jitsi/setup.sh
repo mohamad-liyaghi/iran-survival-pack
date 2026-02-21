@@ -84,8 +84,8 @@ echo "Configuring Nginx reverse proxy..."
 mkdir -p /etc/nginx/survival-pack.d
 
 cat > /etc/nginx/survival-pack.d/jitsi.conf <<'NGINX'
-    # ── Jitsi (/) ──
-    location / {
+    # ── Jitsi WebSocket — XMPP signaling (P2P + multi-party) ──
+    location /xmpp-websocket {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
 
@@ -95,7 +95,67 @@ cat > /etc/nginx/survival-pack.d/jitsi.conf <<'NGINX'
         proxy_set_header X-Forwarded-Proto $scheme;
 
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection "Upgrade";
+
+        proxy_buffering off;
+        tcp_nodelay on;
+        proxy_read_timeout 900s;
+        proxy_send_timeout 900s;
+    }
+
+    # ── Jitsi WebSocket — Colibri/JVB media bridge ──
+    location /colibri-ws {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+
+        proxy_buffering off;
+        tcp_nodelay on;
+        proxy_read_timeout 900s;
+        proxy_send_timeout 900s;
+    }
+
+    # ── Jitsi BOSH (HTTP long-polling fallback for XMPP) ──
+    location /http-bind {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Connection "";
+
+        proxy_buffering off;
+        tcp_nodelay on;
+        proxy_read_timeout 60s;
+    }
+
+    # ── Jitsi main app (/) ──
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Correctly upgrade WebSocket connections, close for regular HTTP
+        set $conn_upgrade "";
+        if ($http_upgrade = "websocket") {
+            set $conn_upgrade "Upgrade";
+        }
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $conn_upgrade;
 
         proxy_buffering off;
         tcp_nodelay on;
