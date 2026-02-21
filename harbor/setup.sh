@@ -8,7 +8,7 @@ CONFIG_FILE="${PROJECT_DIR}/config.json"
 SHARED_CERT_DIR="/etc/nginx/ssl/survival-pack"
 HARBOR_PORT=8093
 HARBOR_VERSION="v2.12.2"
-HARBOR_INSTALL_DIR="/opt/harbor"
+HARBOR_INSTALL_DIR="${HOME}/harbor"
 
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "ERROR: config.json not found. Run 'make init' first."
@@ -88,8 +88,8 @@ if [ ! -f "${HARBOR_INSTALL_DIR}/harbor.yml" ] || [ ! -f "${HARBOR_INSTALL_DIR}/
     fi
 
     echo "Extracting Harbor..."
-    mkdir -p /opt
-    tar xzf "$HARBOR_TAR" -C /opt
+    mkdir -p "${HOME}"
+    tar xzf "$HARBOR_TAR" -C "${HOME}"
     echo "  -> Installed to ${HARBOR_INSTALL_DIR}"
 else
     echo "Harbor already installed at ${HARBOR_INSTALL_DIR}, updating config..."
@@ -129,7 +129,7 @@ database:
   conn_max_lifetime: 5m
   conn_max_idle_time: 0
 
-data_volume: /opt/harbor-data
+data_volume: ${HOME}/harbor-data
 
 trivy:
   ignore_unfixed: false
