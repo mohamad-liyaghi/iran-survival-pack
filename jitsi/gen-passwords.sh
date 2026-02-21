@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/.env"
 
 generate_password() {
-    tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 32
+    openssl rand -hex 16
 }
 
 if [ ! -f "$ENV_FILE" ]; then
