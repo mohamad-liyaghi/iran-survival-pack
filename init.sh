@@ -9,47 +9,47 @@ echo "  Iran Survival Pack - Server Init"
 echo "============================================"
 echo ""
 
-# ── 0. Set anti-sanction DNS first (Shekan + 403.online) ──────────────────────
-# Must happen before any network operation — Docker, apt, everything blocks
-# because Iranian servers can't RESOLVE Docker/GitHub domains. DNS is the fix.
-echo "[0/6] Setting anti-sanction DNS (Shekan + 403.online)..."
+# ── 0. Set anti-sanction DNS ──────────────────────────────────────────────────
+# Shekan/403.online only bypass sanctioned foreign domains — they are NOT
+# general-purpose resolvers. glibc uses at most 3 nameservers, so we use:
+#   1. 10.202.10.202 (403.online)  — sanctions bypass + general resolver
+#   2. 178.22.122.100 (Shekan)     — sanctions bypass fallback
+#   3. 8.8.8.8 (Google)            — resolves everything else (mirror.arvancloud.com, etc.)
+echo "[0/6] Setting anti-sanction DNS (403.online + Shekan + Google fallback)..."
 
-# On Ubuntu 22.04+ /etc/resolv.conf is a symlink managed by systemd-resolved.
-# We need to either configure resolved or write directly.
+# Replace symlink if systemd-resolved is managing it
 if [ -L /etc/resolv.conf ]; then
-    # Configure systemd-resolved
-    sed -i '/^DNS=/d' /etc/systemd/resolved.conf 2>/dev/null || true
-    sed -i '/^FallbackDNS=/d' /etc/systemd/resolved.conf 2>/dev/null || true
-    sed -i '/^DNSOverTLS=/d' /etc/systemd/resolved.conf 2>/dev/null || true
-    cat >> /etc/systemd/resolved.conf <<'EOF'
-DNS=178.22.122.100 185.51.200.2 10.202.10.202 10.202.10.102
-FallbackDNS=78.157.42.100 78.157.42.101
-DNSOverTLS=no
-EOF
-    systemctl restart systemd-resolved 2>/dev/null || true
-
-    # Also write a static resolv.conf (replace symlink) so Docker daemon
-    # and containers pick up the right DNS without systemd-resolved getting
-    # in the way.
-    RESOLV_TARGET=$(readlink -f /etc/resolv.conf 2>/dev/null || echo "")
     rm -f /etc/resolv.conf
 fi
 
 cat > /etc/resolv.conf <<'EOF'
-# Anti-sanction DNS — Shekan + 403.online + Electro
-nameserver 178.22.122.100
-nameserver 185.51.200.2
 nameserver 10.202.10.202
-nameserver 10.202.10.102
-nameserver 78.157.42.100
+nameserver 178.22.122.100
+nameserver 8.8.8.8
+options timeout:2 attempts:2
 EOF
+
+# Also configure systemd-resolved so it survives reboots
+if [ -f /etc/systemd/resolved.conf ]; then
+    sed -i '/^DNS=/d; /^FallbackDNS=/d; /^DNSOverTLS=/d' /etc/systemd/resolved.conf
+    cat >> /etc/systemd/resolved.conf <<'EOF'
+DNS=10.202.10.202 178.22.122.100
+FallbackDNS=8.8.8.8
+DNSOverTLS=no
+EOF
+    systemctl restart systemd-resolved 2>/dev/null || true
+fi
 
 echo "DNS set. Verifying connectivity..."
 if curl -fsSL --connect-timeout 8 https://get.docker.com -o /dev/null 2>/dev/null; then
-    echo "  -> get.docker.com reachable."
+    echo "  -> get.docker.com: OK"
 else
-    echo "  -> WARNING: get.docker.com still unreachable after DNS change."
-    echo "     Will continue anyway — snap fallback will be used."
+    echo "  -> WARNING: get.docker.com not reachable. Snap fallback will be used."
+fi
+if curl -fsSL --connect-timeout 8 https://mirror.arvancloud.com -o /dev/null 2>/dev/null; then
+    echo "  -> mirror.arvancloud.com: OK"
+else
+    echo "  -> WARNING: mirror.arvancloud.com not reachable. Will keep existing apt sources."
 fi
 
 # ── 1. Switch APT sources to Arvan Cloud mirror ────────────────────────────────
@@ -58,23 +58,28 @@ echo "[1/6] Configuring Arvan Cloud package mirrors..."
 CODENAME=$(lsb_release -sc 2>/dev/null || echo "jammy")
 DISTRO=$(lsb_release -si 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo "ubuntu")
 
-if [ "$DISTRO" = "ubuntu" ]; then
-    cp /etc/apt/sources.list /etc/apt/sources.list.bak 2>/dev/null || true
-    cat > /etc/apt/sources.list <<EOF
+# Only switch if the mirror is actually reachable
+if curl -fsSL --connect-timeout 8 "https://mirror.arvancloud.com" -o /dev/null 2>/dev/null; then
+    if [ "$DISTRO" = "ubuntu" ]; then
+        cp /etc/apt/sources.list /etc/apt/sources.list.bak 2>/dev/null || true
+        cat > /etc/apt/sources.list <<EOF
 deb https://mirror.arvancloud.com/ubuntu/ ${CODENAME} main restricted universe multiverse
 deb https://mirror.arvancloud.com/ubuntu/ ${CODENAME}-updates main restricted universe multiverse
 deb https://mirror.arvancloud.com/ubuntu/ ${CODENAME}-backports main restricted universe multiverse
 deb https://mirror.arvancloud.com/ubuntu/ ${CODENAME}-security main restricted universe multiverse
 EOF
-elif [ "$DISTRO" = "debian" ]; then
-    cp /etc/apt/sources.list /etc/apt/sources.list.bak 2>/dev/null || true
-    cat > /etc/apt/sources.list <<EOF
+        echo "  -> Switched to mirror.arvancloud.com/ubuntu"
+    elif [ "$DISTRO" = "debian" ]; then
+        cp /etc/apt/sources.list /etc/apt/sources.list.bak 2>/dev/null || true
+        cat > /etc/apt/sources.list <<EOF
 deb https://mirror.arvancloud.com/debian/ ${CODENAME} main contrib non-free
 deb https://mirror.arvancloud.com/debian/ ${CODENAME}-updates main contrib non-free
 deb https://mirror.arvancloud.com/debian-security/ ${CODENAME}-security main contrib non-free
 EOF
+        echo "  -> Switched to mirror.arvancloud.com/debian"
+    fi
 else
-    echo "WARNING: Unknown distro '${DISTRO}'. Skipping mirror rewrite."
+    echo "  -> mirror.arvancloud.com unreachable, keeping existing apt sources."
 fi
 
 # ── 2. Update system ───────────────────────────────────────────────────────────
@@ -85,7 +90,11 @@ apt-get upgrade -y
 # ── 3. Install prerequisites ───────────────────────────────────────────────────
 echo "[3/6] Installing prerequisites..."
 apt-get install -y \
-    curl wget gnupg2 lsb-release apt-transport-https \
+    curl wget gnupg gnupg2 lsb-release apt-transport-https \
+    ca-certificates software-properties-common \
+    jq ufw openssl snapd 2>/dev/null || \
+apt-get install -y \
+    curl wget gnupg lsb-release \
     ca-certificates software-properties-common \
     jq ufw openssl snapd
 
