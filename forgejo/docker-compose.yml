@@ -1,0 +1,47 @@
+services:
+  postgres-forgejo:
+    image: docker.arvancloud.ir/postgres:16-alpine
+    restart: ${RESTART_POLICY:-unless-stopped}
+    volumes:
+      - ./volumes/db:/var/lib/postgresql/data
+    environment:
+      - TZ=${TZ:-Asia/Tehran}
+      - POSTGRES_USER=${POSTGRES_USER:-forgejo}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-forgejo}
+      - POSTGRES_DB=${POSTGRES_DB:-forgejo}
+    networks:
+      forgejo-net:
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:11
+    depends_on:
+      - postgres-forgejo
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - '127.0.0.1:3000:3000'
+      - '${SSH_PORT:-2222}:22'
+    volumes:
+      - ./volumes/data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=${FORGEJO_DB_TYPE:-postgres}
+      - FORGEJO__database__HOST=${FORGEJO_DB_HOST:-postgres-forgejo:5432}
+      - FORGEJO__database__NAME=${FORGEJO_DB_NAME:-forgejo}
+      - FORGEJO__database__USER=${FORGEJO_DB_USER:-forgejo}
+      - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWD:-forgejo}
+      - FORGEJO__server__ROOT_URL=${FORGEJO__server__ROOT_URL}
+      - FORGEJO__server__SSH_PORT=${FORGEJO__server__SSH_PORT:-2222}
+      - FORGEJO__server__SSH_LISTEN_PORT=${FORGEJO__server__SSH_LISTEN_PORT:-22}
+      - FORGEJO__server__DOMAIN=${FORGEJO__server__DOMAIN}
+      - FORGEJO__server__LFS_START_SERVER=${FORGEJO__server__LFS_START_SERVER:-true}
+      - FORGEJO__service__DISABLE_REGISTRATION=${FORGEJO__service__DISABLE_REGISTRATION:-false}
+      - FORGEJO__service__REQUIRE_SIGNIN_VIEW=${FORGEJO__service__REQUIRE_SIGNIN_VIEW:-false}
+      - FORGEJO__mailer__ENABLED=${FORGEJO__mailer__ENABLED:-false}
+    networks:
+      forgejo-net:
+
+networks:
+  forgejo-net:

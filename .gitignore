@@ -7,3 +7,6 @@ mattermost/volumes/
 sftp/data/
 sftp/db/
 sftp/config/
+forgejo/.env
+forgejo/.env.bak
+forgejo/volumes/

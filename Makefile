@@ -1,4 +1,4 @@
-.PHONY: init cert jitsi chat sftp
+.PHONY: init cert jitsi chat sftp git registry
 
 init:
 	@sudo bash init.sh
@@ -14,3 +14,9 @@ chat:
 
 sftp:
 	@sudo bash sftp/setup.sh
+
+git:
+	@sudo bash forgejo/setup.sh
+
+registry:
+	@sudo bash harbor/setup.sh

@@ -1,7 +1,5 @@
 # Iran Survival Pack
 
-**[برای مشاهده مستندات فارسی اینجا کلیک کنید ↓](#فارسی)**
-
 ---
 
 A set of self-hosted services you can run on your own server in Iran.  
@@ -14,6 +12,8 @@ DNS is automatically set to anti-sanction resolvers during `make init`.
 - Video conferencing (Jitsi Meet)
 - Team chat (Mattermost)
 - Web file manager (File Browser)
+- Git repository hosting (Forgejo)
+- Docker registry (Harbor)
 
 ---
 
@@ -48,22 +48,19 @@ make init
 
 ---
 
-### 2. `make cert` (optional but recommended)
+### 2. `make cert` _(optional — only if you have a domain)_
 
-Get a real Let's Encrypt wildcard cert. Works from Iran — no server access needed from Let's Encrypt, it only checks a DNS TXT record you add.
+Skip this if you're using a plain IP. Run it if you want a real trusted certificate for your subdomains.
 
-- Cloudflare: fully automatic, just paste your API token
-- Any other DNS provider: manual mode — adds the TXT record yourself
+Uses Let's Encrypt with DNS-01 challenge — works from Iran. No browser warnings, no CA installation on devices.
 
 ```bash
 make cert
 ```
 
-After this: `meet.`, `chat.`, `files.` all have a trusted green lock — no warnings, no CA cert installation on devices, no HSTS issues ever.
-
 ---
 
-### 3. `make jitsi` (after `make cert`)
+### 3. `make jitsi`
 
 Encrypted video conferencing.
 
@@ -117,15 +114,53 @@ Ports: `8091` (IP mode) or `80/443` (domain mode)
 
 ---
 
+### 6. `make git`
+
+Self-hosted Git — repositories, issues, pull requests, CI/CD.
+
+- Forgejo (Gitea fork, lightweight, ~100MB RAM)
+- PostgreSQL database included
+- Git SSH access on port `2222`
+- First registered user becomes admin
+- If you set a domain, it uses `git.yourdomain.com` — otherwise `http://YOUR_IP:8092`
+
+```bash
+make git
+```
+
+Ports: `8092` (IP mode) or `80/443` (domain mode), `2222` for Git SSH
+
+---
+
+### 7. `make registry`
+
+Private Docker registry with web UI, vulnerability scanning, access control.
+
+- Harbor with Trivy scanner
+- Push/pull images like Docker Hub but on your own server
+- Role-based access, project quotas, audit logs
+- If you set a domain, it uses `hub.yourdomain.com` — otherwise `http://YOUR_IP:8093`
+
+```bash
+make registry
+```
+
+Ports: `8093` (IP mode) or `80/443` (domain mode)
+
+---
+
 ## Ports
 
 | Port | Use |
 |------|-----|
 | 22 | SSH |
 | 80 | HTTP / redirect to HTTPS |
-| 443 | HTTPS (Jitsi, Mattermost, Files — domain mode) |
+| 443 | HTTPS (all services — domain mode) |
+| 2222 | Forgejo Git SSH |
 | 8090 | Mattermost (IP mode only) |
 | 8091 | File Browser (IP mode only) |
+| 8092 | Forgejo (IP mode only) |
+| 8093 | Harbor (IP mode only) |
 | 10000/udp | Jitsi audio/video |
 | 8445/udp | Mattermost voice calls |
 
@@ -140,6 +175,8 @@ If you entered a real domain in `make init`, each service gets its own subdomain
 | Jitsi | `meet.yourdomain.com` |
 | Mattermost | `chat.yourdomain.com` |
 | File Browser | `files.yourdomain.com` |
+| Forgejo | `git.yourdomain.com` |
+| Harbor | `hub.yourdomain.com` |
 
 You'll be prompted to add an `A` record for each subdomain before setup continues.
 
@@ -166,123 +203,3 @@ To remove the warning permanently, download `https://meet.yourdomain.com/ca.crt`
 
 **If you see the HSTS error in Chrome (can't click "Advanced"):**  
 Go to `chrome://net-internals/#hsts` → under "Delete domain security policies" → type your domain → click **Delete**. Then try again.
-
----
----
-
-<div dir="rtl" id="فارسی">
-
-# فارسی
-
-**بسته بقا برای ایران** — سرویس‌هایی که روی سرور خودت اجرا می‌شن، بدون نیاز به اینترنت آزاد.
-
-همه چیز از میرورهای ایرانی نصب می‌شه. ایمیج‌های داکر از ارون کلاد کشیده می‌شن.
-DNS به صورت خودکار روی سرورهای ضد تحریم تنظیم می‌شه.
-
-**سرویس‌ها:**
-- ویدیوکنفرانس (Jitsi Meet)
-- پیام‌رسان تیمی (Mattermost)
-- مدیر فایل تحت وب (File Browser)
-
----
-
-## پیش‌نیازها
-
-- Ubuntu 22.04+ یا Debian 11+
-- سرور با IP عمومی
-- دسترسی root یا sudo
-- کلون کردن ریپو روی سرور:
-
-```bash
-git clone https://github.com/mohamad-liyaghi/iran-survival-pack.git
-cd iran-survival-pack
-```
-
----
-
-## دستورات
-
-### `make init`
-یک بار اجرا کن، قبل از همه چیز.
-
-- منابع apt رو به میرورهای ایرانی تغییر می‌ده
-- DNS ضد تحریم تنظیم می‌کنه (403.online + شکن)
-- داکر، Nginx، فایروال نصب می‌کنه
-- IP و دامنه سرورت رو می‌پرسه
-
-```bash
-make init
-```
-
----
-
-### `make jitsi`
-ویدیوکنفرانس رمزنگاری‌شده.
-
-- تماس دو نفره: مستقیم بین مرورگرها (P2P)
-- تماس گروهی: از طریق JVB
-- گواهی SSL خودامضا می‌سازه (برای میکروفون/دوربین ضروریه)
-- اگه دامنه داری: روی `meet.yourdomain.com` اجرا می‌شه
-
-```bash
-make jitsi
-```
-
----
-
-### `make chat`
-پیام‌رسان تیمی.
-
-- Mattermost رایگان، کاربر نامحدود
-- کانال، پیام مستقیم، اشتراک‌گذاری فایل
-- اولین بار که باز می‌کنی، اکانت ادمین می‌سازی
-- اگه دامنه داری: روی `chat.yourdomain.com` اجرا می‌شه
-
-```bash
-make chat
-```
-
----
-
-### `make cert`
-گواهی SSL واقعی از Let's Encrypt.
-
-- از DNS-01 استفاده می‌کنه — نیازی نیست Let's Encrypt به سرورت وصل بشه
-- از ایران کار می‌کنه — تحریم مشکلی نیست
-- از Cloudflare یا هر پنل DNS دیگه‌ای پشتیبانی می‌کنه
-- بعد از نصب، هر سه سرویس قفل سبز دارن — بدون هیچ هشداری
-
-```bash
-make cert
-```
-
----
-
-### `make sftp`
-مدیر فایل تحت وب.
-
-- رابط کاربری ساده با drag & drop
-- چند کاربر با سطح دسترسی مختلف
-- لاگین پیش‌فرض: `admin` — پسورد توی ترمینال نشون داده می‌شه، بعد از اولین ورود عوضش کن
-- اگه دامنه داری: روی `files.yourdomain.com` اجرا می‌شه
-
-```bash
-make sftp
-```
-
----
-
-## دامنه یا IP؟
-
-اگه توی `make init` یه دامنه وارد کردی، هر سرویس روی ساب‌دامین خودش اجرا می‌شه:
-
-| سرویس | آدرس |
-|-------|------|
-| Jitsi | `meet.yourdomain.com` |
-| Mattermost | `chat.yourdomain.com` |
-| File Browser | `files.yourdomain.com` |
-
-قبل از اجرای هر سرویس، باید یه رکورد `A` برای ساب‌دامین اضافه کنی.
-اگه فقط IP داری، همه چیز روی پورت‌های جداگانه اجرا می‌شه.
-
-</div>
