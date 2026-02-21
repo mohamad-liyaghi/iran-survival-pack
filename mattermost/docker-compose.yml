@@ -2,12 +2,6 @@ services:
   postgres-mm:
     image: docker.arvancloud.ir/postgres:16-alpine
     restart: ${RESTART_POLICY:-unless-stopped}
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/run/postgresql
     volumes:
       - ${POSTGRES_DATA_PATH:-./volumes/db}:/var/lib/postgresql/data
     environment:
@@ -23,11 +17,6 @@ services:
       - postgres-mm
     image: docker.arvancloud.ir/mattermost/${MATTERMOST_IMAGE:-mattermost-team-edition}:${MATTERMOST_IMAGE_TAG:-latest}
     restart: ${RESTART_POLICY:-unless-stopped}
-    security_opt:
-      - no-new-privileges:true
-    read_only: false
-    tmpfs:
-      - /tmp
     ports:
       - '127.0.0.1:8065:8065'
       - '${CALLS_PORT:-8443}:8443/udp'
