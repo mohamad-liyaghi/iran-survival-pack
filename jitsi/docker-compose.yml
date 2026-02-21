@@ -1,7 +1,7 @@
 services:
   # ── Frontend (Nginx + Jitsi Web) ──
   web:
-    image: jitsi/web:${JITSI_IMAGE_VERSION:-stable}
+    image: docker.arvancloud.ir/jitsi/web:${JITSI_IMAGE_VERSION:-stable}
     restart: ${RESTART_POLICY:-unless-stopped}
     ports:
       - '127.0.0.1:${HTTP_PORT:-8000}:80'
@@ -46,7 +46,7 @@ services:
 
   # ── XMPP Server ──
   prosody:
-    image: jitsi/prosody:${JITSI_IMAGE_VERSION:-stable}
+    image: docker.arvancloud.ir/jitsi/prosody:${JITSI_IMAGE_VERSION:-stable}
     restart: ${RESTART_POLICY:-unless-stopped}
     expose:
       - '5222'
@@ -102,7 +102,7 @@ services:
 
   # ── Focus Component ──
   jicofo:
-    image: jitsi/jicofo:${JITSI_IMAGE_VERSION:-stable}
+    image: docker.arvancloud.ir/jitsi/jicofo:${JITSI_IMAGE_VERSION:-stable}
     restart: ${RESTART_POLICY:-unless-stopped}
     ports:
       - '127.0.0.1:${JICOFO_REST_PORT:-8888}:8888'
@@ -144,7 +144,7 @@ services:
 
   # ── Video Bridge ──
   jvb:
-    image: jitsi/jvb:${JITSI_IMAGE_VERSION:-stable}
+    image: docker.arvancloud.ir/jitsi/jvb:${JITSI_IMAGE_VERSION:-stable}
     restart: ${RESTART_POLICY:-unless-stopped}
     ports:
       - '${JVB_PORT:-10000}:${JVB_PORT:-10000}/udp'

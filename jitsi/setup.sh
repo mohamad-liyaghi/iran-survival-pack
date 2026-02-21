@@ -150,11 +150,8 @@ nginx -t
 systemctl reload nginx
 
 # ── Start Jitsi containers ──
-echo "Pulling Jitsi images (via focker.ir mirror)..."
+echo "Starting Jitsi Meet (pulling images from docker.arvancloud.ir)..."
 cd "${JITSI_DIR}"
-docker compose pull
-
-echo "Starting Jitsi Meet..."
 docker compose down 2>/dev/null || true
 docker compose up -d
 
