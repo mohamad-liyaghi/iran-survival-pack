@@ -54,7 +54,7 @@ fi
 
 # ── Build .env ──
 echo "Configuring Jitsi environment..."
-JITSI_CONFIG_DIR="/opt/jitsi-meet-cfg"
+JITSI_CONFIG_DIR="${HOME}/.jitsi-meet-cfg"
 
 cp "${JITSI_DIR}/.env.template" "${JITSI_DIR}/.env"
 
