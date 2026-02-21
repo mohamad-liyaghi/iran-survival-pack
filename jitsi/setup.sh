@@ -49,7 +49,7 @@ fi
 # ── SSL decision ──
 SSL_ENABLED=false
 
-read -rp "Generate a self-signed SSL certificate? (Y/n): " SSL_CHOICE
+read -rp "Generate SSL certificate? (Y/n): " SSL_CHOICE
 SSL_CHOICE="${SSL_CHOICE:-Y}"
 
 if [[ "$SSL_CHOICE" =~ ^[Yy]$ ]]; then
@@ -64,18 +64,45 @@ if [[ "$SSL_CHOICE" =~ ^[Yy]$ ]]; then
         SAN="IP:${DOMAIN}"
     fi
 
-    if [ ! -f "${SHARED_CERT_DIR}/cert.pem" ]; then
-        echo "Generating self-signed certificate for ${CN} ..."
-        openssl req -x509 -nodes -days 3650 \
-            -newkey rsa:2048 \
-            -keyout "${SHARED_CERT_DIR}/key.pem" \
-            -out "${SHARED_CERT_DIR}/cert.pem" \
-            -subj "/C=IR/ST=Tehran/L=Tehran/O=SurvivalPack/CN=${CN}" \
-            -addext "subjectAltName=${SAN}" 2>/dev/null
-        echo "Certificate saved to ${SHARED_CERT_DIR}"
-    else
-        echo "Reusing existing cert at ${SHARED_CERT_DIR}"
-    fi
+    # Always regenerate — ensures fresh cert with correct SAN
+    echo "Generating CA + signed certificate for ${CN} ..."
+
+    # Step 1: Create a local Root CA
+    openssl genrsa -out "${SHARED_CERT_DIR}/ca.key" 4096 2>/dev/null
+    openssl req -x509 -new -nodes \
+        -key "${SHARED_CERT_DIR}/ca.key" \
+        -sha256 -days 3650 \
+        -out "${SHARED_CERT_DIR}/ca.crt" \
+        -subj "/C=IR/ST=Tehran/L=Tehran/O=SurvivalPack/CN=SurvivalPack Root CA" 2>/dev/null
+
+    # Step 2: Generate server key + CSR
+    openssl genrsa -out "${SHARED_CERT_DIR}/key.pem" 2048 2>/dev/null
+    openssl req -new \
+        -key "${SHARED_CERT_DIR}/key.pem" \
+        -out "${SHARED_CERT_DIR}/server.csr" \
+        -subj "/C=IR/ST=Tehran/L=Tehran/O=SurvivalPack/CN=${CN}" 2>/dev/null
+
+    # Step 3: Sign the server cert with the CA (with SAN)
+    cat > "${SHARED_CERT_DIR}/server.ext" <<EOF
+subjectAltName = ${SAN}
+keyUsage = digitalSignature
+extendedKeyUsage = serverAuth
+EOF
+    openssl x509 -req \
+        -in "${SHARED_CERT_DIR}/server.csr" \
+        -CA "${SHARED_CERT_DIR}/ca.crt" \
+        -CAkey "${SHARED_CERT_DIR}/ca.key" \
+        -CAcreateserial \
+        -out "${SHARED_CERT_DIR}/cert.pem" \
+        -days 3650 -sha256 \
+        -extfile "${SHARED_CERT_DIR}/server.ext" 2>/dev/null
+
+    rm -f "${SHARED_CERT_DIR}/server.csr" "${SHARED_CERT_DIR}/server.ext"
+    chmod 600 "${SHARED_CERT_DIR}/ca.key" "${SHARED_CERT_DIR}/key.pem"
+
+    echo ""
+    echo "  CA cert  : ${SHARED_CERT_DIR}/ca.crt"
+    echo "  Server cert: ${SHARED_CERT_DIR}/cert.pem"
 fi
 
 # ── Determine public URL ──
@@ -157,6 +184,17 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
+
+    # Strip HSTS so Chrome doesn't hard-block self-signed certs
+    proxy_hide_header Strict-Transport-Security;
+    add_header Strict-Transport-Security "" always;
+
+    # Download the CA cert — install once per device to trust all services
+    location = /ca.crt {
+        alias ${SHARED_CERT_DIR}/ca.crt;
+        default_type application/x-x509-ca-cert;
+        add_header Content-Disposition 'attachment; filename="SurvivalPackCA.crt"';
+    }
 
     include /etc/nginx/survival-pack.d/jitsi-locations.conf;
 }
@@ -319,6 +357,13 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
+    proxy_hide_header Strict-Transport-Security;
+    add_header Strict-Transport-Security "" always;
+    location = /ca.crt {
+        alias ${SHARED_CERT_DIR}/ca.crt;
+        default_type application/x-x509-ca-cert;
+        add_header Content-Disposition 'attachment; filename="SurvivalPackCA.crt"';
+    }
     include /etc/nginx/survival-pack.d/*.conf;
 }
 NGINX
@@ -352,7 +397,21 @@ echo ""
 echo "  URL : ${PUBLIC_URL}"
 echo ""
 if [ "$SSL_ENABLED" = true ]; then
-echo "  Self-signed cert: click 'Advanced' in the"
-echo "  browser warning and proceed."
+echo "  ── Trust the certificate (do this once) ──"
+echo ""
+echo "  1. Open this URL in your browser:"
+echo "     ${PUBLIC_URL}/ca.crt"
+echo ""
+echo "  2. Download and install SurvivalPackCA.crt"
+echo "     macOS  : double-click → Keychain → mark as Trusted"
+echo "     Windows: double-click → Install Certificate → Trusted Root CA"
+echo "     Android: Settings → Security → Install from storage"
+echo "     iOS    : open the file → Settings → Profile → Install"
+echo ""
+echo "  3. Also clear old HSTS cache in Chrome:"
+echo "     chrome://net-internals/#hsts"
+echo "     → Delete domain: ${JITSI_HOST}"
+echo ""
+echo "  After installing the CA, no more browser warnings."
 fi
 echo "============================================"
