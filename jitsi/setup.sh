@@ -78,11 +78,32 @@ if ! grep -q "$DOMAIN" /etc/hosts; then
     echo "${SERVER_IP} ${DOMAIN}" >> /etc/hosts
 fi
 
-# ── Configure Nginx ──
+# ── Configure Nginx (include-based — other services can append) ──
 echo "Configuring Nginx reverse proxy..."
 
+mkdir -p /etc/nginx/survival-pack.d
+
+cat > /etc/nginx/survival-pack.d/jitsi.conf <<'NGINX'
+    # ── Jitsi (/) ──
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_buffering off;
+        tcp_nodelay on;
+    }
+NGINX
+
 if [ "$SSL_ENABLED" = true ]; then
-    cat > /etc/nginx/sites-available/jitsi <<NGINX
+    cat > /etc/nginx/sites-available/survival-pack <<NGINX
 server {
     listen 80;
     server_name ${DOMAIN};
@@ -101,50 +122,23 @@ server {
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
 
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        proxy_buffering off;
-        tcp_nodelay on;
-    }
+    include /etc/nginx/survival-pack.d/*.conf;
 }
 NGINX
 else
-    cat > /etc/nginx/sites-available/jitsi <<NGINX
+    cat > /etc/nginx/sites-available/survival-pack <<NGINX
 server {
     listen 80;
     server_name ${DOMAIN};
 
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        proxy_buffering off;
-        tcp_nodelay on;
-    }
+    include /etc/nginx/survival-pack.d/*.conf;
 }
 NGINX
 fi
 
-ln -sf /etc/nginx/sites-available/jitsi /etc/nginx/sites-enabled/jitsi
+ln -sf /etc/nginx/sites-available/survival-pack /etc/nginx/sites-enabled/survival-pack
 rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-enabled/jitsi
 
 nginx -t
 systemctl reload nginx

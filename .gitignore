@@ -1,3 +1,6 @@
 config.json
 jitsi/.env
 jitsi/.env.bak
+mattermost/.env
+mattermost/.env.bak
+mattermost/volumes/
