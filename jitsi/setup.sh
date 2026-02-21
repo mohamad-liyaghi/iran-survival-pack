@@ -61,10 +61,15 @@ cp "${JITSI_DIR}/.env.template" "${JITSI_DIR}/.env"
 sed -i "s|__PUBLIC_URL__|${PUBLIC_URL}|g"    "${JITSI_DIR}/.env"
 sed -i "s|__SERVER_IP__|${SERVER_IP}|g"      "${JITSI_DIR}/.env"
 sed -i "s|__CONFIG__|${JITSI_CONFIG_DIR}|g"  "${JITSI_DIR}/.env"
+sed -i "s|__DOMAIN__|${DOMAIN}|g"            "${JITSI_DIR}/.env"
 
 # ── Generate passwords ──
 echo "Generating secure passwords..."
 bash "${JITSI_DIR}/gen-passwords.sh"
+
+# ── Wipe old cached configs (settings are baked on first start) ──
+echo "Clearing old Jitsi config cache..."
+rm -rf "${JITSI_CONFIG_DIR}" 2>/dev/null || true
 
 # ── Create config directories ──
 echo "Creating Jitsi config directories..."
