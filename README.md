@@ -48,7 +48,22 @@ make init
 
 ---
 
-### 2. `make jitsi`
+### 2. `make cert` (optional but recommended)
+
+Get a real Let's Encrypt wildcard cert. Works from Iran — no server access needed from Let's Encrypt, it only checks a DNS TXT record you add.
+
+- Cloudflare: fully automatic, just paste your API token
+- Any other DNS provider: manual mode — adds the TXT record yourself
+
+```bash
+make cert
+```
+
+After this: `meet.`, `chat.`, `files.` all have a trusted green lock — no warnings, no CA cert installation on devices, no HSTS issues ever.
+
+---
+
+### 3. `make jitsi` (after `make cert`)
 
 Encrypted video conferencing.
 
@@ -68,7 +83,7 @@ Ports: `80`, `443`, `10000/udp`
 
 ---
 
-### 3. `make chat`
+### 4. `make chat`
 
 Team messaging, channels, file sharing.
 
@@ -85,7 +100,7 @@ Ports: `8090` (IP mode) or `80/443` (domain mode), `8445/udp` for voice calls
 
 ---
 
-### 4. `make sftp`
+### 5. `make sftp`
 
 Web-based file manager — upload, download, share files from any browser.
 
@@ -134,11 +149,23 @@ If you only have an IP, everything runs on separate ports — no DNS needed.
 
 ## SSL Certificates
 
-OpenSSL self-signed (Let's Encrypt doesn't work from Iranian servers).  
-The first service to run with SSL generates a wildcard cert (`*.yourdomain.com`) stored at `/etc/nginx/ssl/survival-pack/`. The other services reuse it automatically.
+You have two options:
 
-Browser will show a security warning — click **Advanced → Proceed**.  
-Mobile Jitsi apps won't work with self-signed certs.
+**Option A — Real Let's Encrypt cert (recommended):**
+
+```bash
+make cert
+```
+
+Uses `acme.sh` with DNS-01 challenge. Works from Iran because Let's Encrypt verifies a DNS TXT record — it never connects to your server. Supports Cloudflare (automatic) or any DNS provider (manual TXT record). After this, all three subdomains get a trusted green lock with zero browser warnings.
+
+**Option B — Self-signed cert:**
+
+Generated automatically when you run `make jitsi`/`make chat`/`make sftp`. A local CA signs a wildcard cert for `*.yourdomain.com`. Browser shows a warning — click **Advanced → Proceed**.  
+To remove the warning permanently, download `https://meet.yourdomain.com/ca.crt` and install the CA cert on each device.
+
+**If you see the HSTS error in Chrome (can't click "Advanced"):**  
+Go to `chrome://net-internals/#hsts` → under "Delete domain security policies" → type your domain → click **Delete**. Then try again.
 
 ---
 ---
@@ -213,6 +240,20 @@ make jitsi
 
 ```bash
 make chat
+```
+
+---
+
+### `make cert`
+گواهی SSL واقعی از Let's Encrypt.
+
+- از DNS-01 استفاده می‌کنه — نیازی نیست Let's Encrypt به سرورت وصل بشه
+- از ایران کار می‌کنه — تحریم مشکلی نیست
+- از Cloudflare یا هر پنل DNS دیگه‌ای پشتیبانی می‌کنه
+- بعد از نصب، هر سه سرویس قفل سبز دارن — بدون هیچ هشداری
+
+```bash
+make cert
 ```
 
 ---

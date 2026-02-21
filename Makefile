@@ -1,7 +1,10 @@
-.PHONY: init jitsi chat sftp
+.PHONY: init cert jitsi chat sftp
 
 init:
 	@sudo bash init.sh
+
+cert:
+	@sudo bash cert/setup.sh
 
 jitsi:
 	@sudo bash jitsi/setup.sh
